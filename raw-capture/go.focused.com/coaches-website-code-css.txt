@@ -1,0 +1,51 @@
+  
+
+/* Testimonials */
+#col-mrL4W6SMQ2, #col-f_SlIbjcFt, #col-5xfnm-HYE-, #col-u_aVcOzIKL, #col-UjjmBZkRyk, #col-NOJEwV_vMq, #col-gjrynOkCmD, #col-UbuSjxrHmB, #col-y0K9aSFN8Y, #col-Suln-dJIX3, #col-2wHYy71Jtn, #col-9UBu1cNa9U, #col-3R1aCdgel, #col-Z3aONmS_X {
+    max-width: 700px;
+    margin: auto;
+} 
+
+
+
+  
+  .c-social-icons {
+   display: none;
+  }
+  
+  .social-icons-container {
+    display: flex;
+    flex-wrap: nowrap !important;
+}
+  #row-88Q2YtqlCi > .inner {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center;
+  }
+  #col-AGE6QgdYS8 {
+  width: auto !important;
+}
+  #col-i_qvO3tf90{
+  width: auto !important;
+    flex: 0 !important;
+  }
+  
+  .button-gfhh2c-Y8t .button-icon-end, .button-gfhh2c-Y8t .button-icon-start, .button-gfhh2c-Y8t .main-heading-button {
+    line-height: 1 !important;
+    display: block !important;
+  }
+  
+  #col-jTguSlqk1X, #col-24BtUaoG4, #col-a7NpK4aIIH, #col-cFVG6P1Rp, 
+  #col-LtTCRHQvQR, #col-QodcLH8Ha, #col-8i_VCLYeF, #col-rehym5bSbU {
+  display: none;
+  }
+  
+  #section-MyeVxfZKE5, #section-PhZuPkDVh, #section-xyxvHmwrnM {
+    display: none;
+  }
+  
+  
+#col-odtmQM5lXT, #col-eakGqGLFPr {
+    max-width: 540px;
+    margin: auto;
+  }

@@ -1,0 +1,226 @@
+/* ===== FUTURE-PROOF LOADER (works with .txt today, .css/.js tomorrow) ===== */
+(function(){
+  // Stable redirect URLs you control:
+  var CSS_URL  = "https://go.focused.com/coaches-website-code-css";
+
+  // 1) Load CSS via <link>, with a fetch→<style> fallback (for text/plain/nosniff cases)
+  function addLinkCss(href, onload, onerror){
+    var link = document.createElement('link');
+    link.id = 'coaches-css';
+    link.rel = 'stylesheet';
+    link.href = href;
+    if (onload)  link.onload  = onload;
+    if (onerror) link.onerror = onerror;
+    document.head.appendChild(link);
+    return link;
+  }
+  function injectCssText(css){
+    var style = document.getElementById('coaches-css-inline') || document.createElement('style');
+    style.id = 'coaches-css-inline';
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+  function ensureCss(){
+    if (document.getElementById('coaches-css') || document.getElementById('coaches-css-inline')) return;
+    var timedOut = false, loaded = false;
+
+    var t = setTimeout(function(){
+      timedOut = true;
+      // Fallback: fetch raw CSS and inject
+      fetch(CSS_URL, { cache: 'no-cache' })
+        .then(function(r){ return r.text(); })
+        .then(function(css){ injectCssText(css); })
+        .catch(function(e){ console.warn('[coaches] CSS fetch failed', e); });
+    }, 1500);
+
+    addLinkCss(CSS_URL, function(){
+      if (timedOut) return; // we already fell back
+      loaded = true; clearTimeout(t);
+    }, function(){
+      if (loaded) return;
+      clearTimeout(t);
+      // Immediate fallback on load error
+      fetch(CSS_URL, { cache: 'no-cache' })
+        .then(function(r){ return r.text(); })
+        .then(function(css){ injectCssText(css); })
+        .catch(function(e){ console.warn('[coaches] CSS load failed', e); });
+    });
+  }
+
+  // 2) Per-site config from meta tags (works regardless of where assets are hosted)
+  function cfg(name, fallback){
+    var el = document.querySelector('meta[name="coaches:'+name+'"]');
+    var v  = el && el.content ? String(el.content).trim() : '';
+    return v || (fallback || 'no');
+  }
+  window.CoachesConfig = {
+    show_mail:  cfg('show_mail','no'),
+    show_group: cfg('show_group','no'),
+    show_flash: cfg('show_flash','no'),
+    show_book:  cfg('show_book','no'),
+    show_phone: cfg('show_phone','no')
+  };
+
+  // 3) One-time init guard
+  if (document.documentElement.hasAttribute('data-coaches-init')) return;
+  document.documentElement.setAttribute('data-coaches-init','1');
+
+  // Kick off CSS now; your existing code can run right after
+  ensureCss();
+})();
+
+
+
+/* ===== YOUR EXISTING LOGIC (unchanged, but reads from CoachesConfig) ===== */
+document.addEventListener("DOMContentLoaded", function() {
+  console.log("Show Running");
+
+  const C = window.CoachesConfig || {};
+  const norm = v => (String(v||'').trim() || 'no');
+  const showMail  = norm(C.show_mail);
+  const showGroup = norm(C.show_group);
+  const showFlash = norm(C.show_flash);
+  const showBook  = norm(C.show_book);
+  const showPhone = norm(C.show_phone);
+
+  const elementConfig = {
+    group: {
+      show: showGroup,
+      selectors: [
+        '#col-jTguSlqk1X','#col-24BtUaoG4','#col-a7NpK4aIIH','#col-cFVG6P1Rp',
+        '#col-LtTCRHQvQR','#col-QodcLH8Ha','#col-8i_VCLYeF','#col-2ep9R5IuFN',
+        '#col-rehym5bSbU','#row-V2Tm7scOHG',
+        '#el_yAq3YmIAAfjxqIVWmCYq_Mi8f7Cj9tWBH0rlLp7jN_4 > div > div > div > div > div:nth-child(3)'
+      ]
+    },
+    flash: { show: showFlash, selectors: [] },
+    book: {
+      show: showBook,
+      selectors: [
+        '#section-MyeVxfZKE5','#section-PhZuPkDVh','#section-xyxvHmwrnM',
+        '#section-RUwkBZf9Uk','#section-NTOU4cQIxE','#section-dfpQYHMh2T',
+        '#section-HbCFBsOl9c','#section-ILMi-egfaG','#section-vBtOdH11q-'
+      ],
+      desktopCssWhenHidden: [
+        { selector: '#row-dksEqsj2Jb > .inner', rules: 'flex-direction:row-reverse;' }
+      ]
+    },
+    phone: {
+      show: showPhone,
+      selectors: ['#section-123456','#sub-heading-AX4QmX3Y_Y','#sub-heading-8gKga7UVns']
+    },
+    mail: {
+      show: showMail,
+      selectors: ['#section-123456','#sub-heading-quYfFsxKt6','#sub-heading-HGi3e_yw1q']
+    }
+  };
+
+  function ensureStyle(id, css){
+    var head = document.head || document.getElementsByTagName('head')[0] || document.documentElement;
+    var tag = document.getElementById(id);
+    if(!tag){ tag = document.createElement('style'); tag.id = id; head.appendChild(tag); }
+    tag.textContent = css;
+  }
+  ensureStyle('force-hide-style', '[data-force-hide]{display:none !important}');
+
+  function safeQSA(sel){ try { return Array.from(document.querySelectorAll(sel)); } catch(e){ return []; } }
+
+  function setDisplay(shouldShow, selectors){
+    (selectors||[]).forEach(function(s){
+      safeQSA(s).forEach(function(el){
+        if(shouldShow){ el.removeAttribute('data-force-hide'); el.style.display=''; }
+        else { el.setAttribute('data-force-hide',''); el.style.display='none'; }
+      });
+    });
+  }
+
+  function applyDesktopCss(key, enabled, rules){
+    var id = 'dyn-css-' + key;
+    if(!enabled || !rules || !rules.length){
+      var t = document.getElementById(id); if(t) t.remove();
+      return;
+    }
+    var css = '@media (min-width:768px){' + rules.map(function(r){ return r.selector + '{' + r.rules + '}'; }).join('') + '}';
+    ensureStyle(id, css);
+  }
+
+  function runOnce(){
+    for(var key in elementConfig){
+      if(!Object.prototype.hasOwnProperty.call(elementConfig,key)) continue;
+      var cfg = elementConfig[key];
+      var shouldShow = /^(yes|true|1|on)$/i.test(cfg.show);
+      setDisplay(shouldShow, cfg.selectors || []);
+      applyDesktopCss(key, !shouldShow, cfg.desktopCssWhenHidden || []);
+    }
+  }
+
+  function init(){
+    runOnce();
+    if('MutationObserver' in window){
+      var scheduled = false;
+      var obs = new MutationObserver(function(){
+        if(scheduled) return;
+        scheduled = true;
+        setTimeout(function(){ scheduled = false; runOnce(); }, 50);
+      });
+      obs.observe(document.documentElement, { childList:true, subtree:true });
+    } else {
+      var tries = 0, maxTries = 100, iv = setInterval(function(){
+        runOnce();
+        if(++tries >= maxTries) clearInterval(iv);
+      }, 200);
+    }
+  }
+  init();
+
+  // Social icons (null-safe href)
+  const socialIconsContainer = document.querySelector('.c-social-icons');
+  if (socialIconsContainer) {
+    const socialIcons = socialIconsContainer.querySelectorAll('.social-icon');
+    let hasVisibleIcons = false;
+
+    socialIcons.forEach(icon => {
+      const href = (icon.getAttribute('href') || '').trim();
+
+      if (href.startsWith('mailto:')) {
+        if (showMail.toLowerCase() === 'yes') {
+          hasVisibleIcons = true;
+        } else {
+          icon.style.display = 'none';
+        }
+      } else if (href === '' || href === 'https://') {
+        icon.style.display = 'none';
+      } else {
+        hasVisibleIcons = true;
+      }
+    });
+
+    if (hasVisibleIcons) {
+      socialIconsContainer.style.display = 'block';
+    }
+  }
+
+  const isEmpty=t=>!t||!t.textContent||t.textContent.replace(/\u00A0/g," ").trim()==="";
+  function hideTestimonials(cfg){
+    const p1=document.querySelector(cfg.p1);
+    const c1=document.querySelector(cfg.c1);
+    const p2=document.querySelector(cfg.p2);
+    const c2=document.querySelector(cfg.c2);
+    const sec=document.querySelector(cfg.section);
+    let e1=false,e2=false;
+    if(p1&&c1&&isEmpty(p1)){e1=true;c1.style.display="none";}
+    if(p2&&c2&&isEmpty(p2)){e2=true;c2.style.display="none";}
+    if(sec&&e1&&e2){sec.style.display="none";}
+  }
+
+  hideTestimonials({ p1:"#paragraph-3PCHybJB4j", c1:"#col-eakGqGLFPr", p2:"#paragraph-Mmws6sIq64", c2:"#col-odtmQM5lXT", section:"#section-ZpHlUr0V2" });
+  hideTestimonials({ p1:"#paragraph-E1mD_v8FFx", c1:"#col-f_SlIbjcFt", p2:"#paragraph-3OyMq5ZGtE", c2:"#col-mrL4W6SMQ2", section:"#section-FUcRkY7MTu" });
+  hideTestimonials({ p1:"#paragraph-WppjfGJ-gP", c1:"#col-5xfnm-HYE-", p2:"#paragraph-mFtw4h5x-G", c2:"#col-u_aVcOzIKL", section:"#section-zv58FL7msS" });
+  hideTestimonials({ p1:"#paragraph-RxPES_lvOC", c1:"#col-NOJEwV_vMq", p2:"#paragraph-JyJibTW43Y", c2:"#col-UjjmBZkRyk", section:"#section-qLRZ-M68NA" });
+  hideTestimonials({ p1:"#paragraph-PsvxT_wdQ-", c1:"#col-gjrynOkCmD", p2:"#paragraph-4M5Z0B7H6L", c2:"#col-UbuSjxrHmB", section:"#section-Frf3DTGbYG" });
+  hideTestimonials({ p1:"#paragraph-ptr2uR1OFq", c1:"#col-Suln-dJIX3", p2:"#paragraph-NcOwkvVuD1", c2:"#col-y0K9aSFN8Y", section:"#section-YVLYkyy1k2" });
+  hideTestimonials({ p1:"#paragraph--nGGVcgzuJ", c1:"#col-2wHYy71Jtn", p2:"#paragraph-iONVmXDm1l", c2:"#col-9UBu1cNa9U", section:"#section-km-HNDdOPC" });
+  hideTestimonials({ p1:"#paragraph-Lofzi6qTx", c1:"#col-3R1aCdgel", p2:"#paragraph-0fpU6rSSwX", c2:"#col-Z3aONmS_X", section:"#section-4V3_zMAXj" });
+
+  console.log("End Running");
+});
